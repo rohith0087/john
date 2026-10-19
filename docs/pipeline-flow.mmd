@@ -1,0 +1,29 @@
+flowchart TD
+ S["1 · Select IDNs and source scope<br/>Refresh chosen public newsrooms"]
+ C["2 · Collect and extract articles<br/>Allowed URLs · usable title and body"]
+ E["3 · Save source evidence<br/>Text, date, URL and capture snapshot"]
+ N["4 · NORMALIZATION ENGINE<br/>Classify relevance and standardize facts"]
+ V["5 · STRUCTURED-DATA VALIDATOR<br/>Check dates, units, bounds and evidence fields"]
+ D["6 · Version and replay check<br/>Same source + content: keep existing version<br/>Changed facts: create pending version"]
+ R["7 · Editorial review<br/>Check source · correct facts · approve current version"]
+ K["8 · ACTION + RANKING RULES<br/>Suggest follow-up · score five factors · sort"]
+ U["9 · Sales dashboard<br/>Selected IDNs → top actions → full account brief"]
+ X["Unsupported or invalid items<br/>Excluded or failed in collection log"]
+ P["Explicit draft preview<br/>Pending items can be scored for review"]
+ F["FUTURE · Personalized recommendation engine<br/>Supplier products, account context and feedback"]
+ S --> C --> E --> N --> V --> D --> R
+ N -->|Unsupported| X
+ V -->|Invalid| X
+ R -->|Approved collected versions| K --> U
+ R -->|Corrections revalidated| V
+ D -.-> P
+ P -.-> K
+ K -.-> F
+ classDef engine fill:#e8efff,stroke:#3563ad,color:#17345e;
+ classDef check fill:#fff3df,stroke:#ba8531,color:#6f4711;
+ classDef output fill:#e7f3ed,stroke:#4c8a6b,color:#23563d;
+ classDef muted fill:#f3f4f6,stroke:#94a3b8,color:#475569;
+ class N,K engine;
+ class V,R check;
+ class U output;
+ class X,P,F muted;

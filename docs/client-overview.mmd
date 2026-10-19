@@ -1,0 +1,17 @@
+flowchart TD
+ A["Collect selected IDN updates<br/>Public sources + basic article checks"]
+ B["Preserve the evidence<br/>Save source text, dates and URL"]
+ C["NORMALIZE<br/>Turn articles into consistent account facts"]
+ D["VALIDATE<br/>Check structure, dates, units and bounds"]
+ E["Handle versions + review<br/>Keep unchanged records · review new or changed facts"]
+ F["RANK + SUGGEST<br/>Approved updates → shared scores + follow-up actions"]
+ G["Show sales what matters<br/>Compact widget → full account brief"]
+ H["FUTURE · Personalize<br/>Add supplier and account context"]
+ A --> B --> C --> D --> E --> F --> G
+ F -.-> H
+ classDef engine fill:#e8efff,stroke:#3563ad,color:#17345e;
+ classDef check fill:#fff3df,stroke:#ba8531,color:#6f4711;
+ classDef future fill:#f3f4f6,stroke:#94a3b8,color:#475569;
+ class C,F engine;
+ class D,E check;
+ class H future;

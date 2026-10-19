@@ -1,0 +1,24 @@
+flowchart TD
+ ROOT["IDN Watch · Engine responsibilities"]
+ N["NORMALIZE<br/>Different articles → one consistent record"]
+ V["VALIDATE<br/>Reject inconsistent or unsupported structure"]
+ R["RANK + SUGGEST<br/>Shared rules → prioritized follow-up"]
+ F["FUTURE · PERSONALIZE<br/>Supplier context → more relevant actions"]
+ ROOT --> N
+ ROOT --> V
+ ROOT --> R
+ ROOT -.-> F
+ N --> N1["Parent IDN and facility<br/>Development type and stage<br/>Dates, capacity, investment, evidence"]
+ V --> V1["Required fields and allowed values<br/>Dates, numeric bounds and units<br/>Same-entity comparisons"]
+ R --> R1["Scale 30 · Supplier relevance 25<br/>Next-step clarity 15 · Recency 15<br/>Source verification 15"]
+ F -.-> F1["Product fit and territory<br/>Account / CRM context<br/>Feedback and evaluated outcomes"]
+ N1 --> N2["Unsupported stories are excluded<br/>Unknown values remain unknown"]
+ V1 --> V2["Consistency checks do not verify truth<br/>Human source review remains separate"]
+ R1 --> R2["Score is provisional priority<br/>Not buying probability or sales forecast"]
+ F1 -.-> F2["Extends or replaces current rules<br/>Not implemented in this prototype"]
+ classDef engine fill:#e8efff,stroke:#3563ad,color:#17345e;
+ classDef check fill:#fff3df,stroke:#ba8531,color:#6f4711;
+ classDef future fill:#f3f4f6,stroke:#94a3b8,color:#475569;
+ class N,R engine;
+ class V check;
+ class F,F1,F2 future;

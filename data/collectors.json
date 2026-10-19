@@ -1,0 +1,75 @@
+[
+  {
+    "id": "advent-press",
+    "system": "adventhealth",
+    "name": "AdventHealth West Florida \u00b7 issuer releases",
+    "index_url": "https://www.prnewswire.com/news/adventhealth-west-florida-division/",
+    "kind": "issuer_release",
+    "max_articles": 4,
+    "seeds": [
+      "https://www.prnewswire.com/news-releases/adventhealth-carrollwood-expansion-to-add-patient-tower-increase-beds-and-surgical-services-302804827.html"
+    ],
+    "note": "Issuer-published releases on PR Newswire. Coverage is limited to the configured division, not all AdventHealth facilities."
+  },
+  {
+    "id": "hca-florida",
+    "system": "hca",
+    "name": "HCA Florida \u00b7 official newsroom",
+    "index_url": "https://www.hcafloridahealthcare.com/about-us/newsroom",
+    "kind": "official",
+    "max_articles": 8,
+    "seeds": [
+      "https://www.hcafloridahealthcare.com/about-us/newsroom/raulerson-hospital-announces-21-million-dollar-emergency-room-expansion"
+    ],
+    "note": "Florida newsroom only; it does not provide comprehensive HCA corporate or national coverage."
+  },
+  {
+    "id": "advent-news",
+    "system": "adventhealth",
+    "name": "AdventHealth \u00b7 official newsroom",
+    "index_url": "https://www.adventhealth.com/news",
+    "kind": "official",
+    "max_articles": 2,
+    "seeds": [],
+    "note": "Direct automated requests may return 403. Failures are retained; source-text import is available for browser-accessible articles."
+  },
+  {
+    "id": "piedmont-news",
+    "system": "piedmont",
+    "name": "Piedmont Healthcare \u00b7 official news",
+    "index_url": "https://www.piedmont.org/news",
+    "kind": "official",
+    "max_articles": 5,
+    "seeds": [
+      "https://www.piedmont.org/news/piedmont-to-invest-nearly-$600-million-in-relocation-hospital-in-newton-county-ga",
+      "https://www.piedmont.org/news/piedmont-walton-opens-expanded-emergency-department"
+    ],
+    "note": "Georgia IDN. Bounded official news collection; hospital developments remain attributed to Piedmont Healthcare."
+  },
+  {
+    "id": "wellstar-news",
+    "system": "wellstar",
+    "name": "Wellstar Health System \u00b7 official newsroom",
+    "index_url": "https://www.wellstar.org/articles/newsroom",
+    "kind": "official",
+    "max_articles": 5,
+    "seeds": [
+      "https://www.wellstar.org/articles/first-patients-receive-care-at-wellstar-columbia-county-medical-center",
+      "https://www.wellstar.org/articles/wellstar-kennestone-expands-care-with-new-tower"
+    ],
+    "note": "Georgia IDN, including metro Atlanta. Bounded newsroom discovery and selected official expansion articles; not complete historical coverage."
+  },
+  {
+    "id": "novant-news",
+    "system": "novant",
+    "name": "Novant Health \u00b7 official releases",
+    "index_url": "https://www.novanthealth.org/newsroom/releases",
+    "kind": "official",
+    "max_articles": 5,
+    "seeds": [
+      "https://www.novanthealth.org/newsroom/releases-20260615",
+      "https://www.novanthealth.org/newsroom/novant-health-marks-major-construction-milestone-for-future-greenviille-hospital-on-patewood-drive"
+    ],
+    "note": "Carolinas IDN. Bounded official releases; pending certificate-of-need applications remain proposed developments, not approved or operational capacity."
+  }
+]

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IDN Watch — How the recommendation workflow works</title>
+<style>
+:root{--paper:#ffffff;--paper-2:#f5f6f8;--ink:#132b47;--muted:#526579;--soft:#61758b;--rule:#b8c5d2;--accent:#0f6cbd;--accent-tint:#eff6fc;--font-sans:'Segoe UI',Arial,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--paper-2);color:var(--ink);font-family:var(--font-sans)}main{max-width:1360px;width:100%;min-width:0;margin:auto;padding:28px 24px}.diagram-container{width:100%;overflow-x:auto;background:var(--paper);border:1px solid #dce3eb;border-radius:6px}svg{width:100%;min-width:1280px;display:block;font-family:var(--font-sans)}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.presenter-note{margin:18px 0 0;font-size:14px;line-height:1.8;color:var(--muted);max-width:920px}.presenter-note strong{font-weight:600;color:var(--ink)}@media print{@page{size:landscape;margin:10mm}body{background:white}main{padding:0;max-width:none}.diagram-container{overflow-x:visible;border:0}svg{min-width:0}.presenter-note{display:none}}
+</style>
+</head>
+<body><main><h1 class="sr-only">How IDN Watch turns news into sales follow-up</h1>
+<div class="diagram-container">
+<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="idn-watch-business-flow-title idn-watch-business-flow-desc">
+<title id="idn-watch-business-flow-title">How IDN Watch turns news into sales follow-up</title>
+<desc id="idn-watch-business-flow-desc">Sales teams choose IDNs, IDN Watch collects and organizes public updates, an editor checks them, shared rules prioritize follow-up, and a dashboard widget presents the next step with supporting evidence.</desc>
+<defs>
+<marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#61758b"/></marker>
+<marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#0f6cbd"/></marker>
+<marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#0f6cbd"/></marker>
+</defs>
+<rect x="0" y="0" width="1280" height="720" fill="#ffffff"/>
+<text x="48" y="48" fill="#132b47" font-size="16" font-weight="600">IDN Watch</text>
+<text x="1232" y="48" fill="#526579" font-size="12" text-anchor="end">BUSINESS WORKFLOW</text>
+<text x="48" y="104" fill="#132b47" font-size="40" font-weight="600" letter-spacing="-1">From IDN news to a useful sales next step</text>
+<text x="48" y="144" fill="#526579" font-size="16">Help sales teams decide which health-system developments deserve attention.</text>
+<!-- Connectors precede nodes. Read the numbered path left-to-right, then down and back. -->
+<g fill="none" stroke="#61758b" stroke-width="2" marker-end="url(#arrow)">
+<line x1="392" y1="280" x2="460" y2="280"/>
+<line x1="812" y1="280" x2="880" y2="280"/>
+<line x1="1060" y1="360" x2="1060" y2="424"/>
+<line x1="888" y1="512" x2="820" y2="512"/>
+<line x1="468" y1="512" x2="400" y2="512"/>
+</g>
+<g id="step-1" data-block-id="step-1" data-block-name="Choose the IDNs you follow">
+<rect x="48" y="200" width="344" height="160" rx="6" fill="#ffffff" stroke="#b8c5d2" stroke-width="1"/>
+<text x="72" y="232" fill="#526579" font-size="12" font-weight="600" letter-spacing="1">01  /  SALES TEAM</text>
+<text x="72" y="268" fill="#132b47" font-size="16" font-weight="600">Choose the IDNs you follow</text>
+<text x="72" y="300" fill="#526579" font-size="16">Focus on the health systems</text>
+<text x="72" y="324" fill="#526579" font-size="16">your sales team works with.</text>
+</g>
+<g id="step-2" data-block-id="step-2" data-block-name="Collect public updates">
+<rect x="468" y="200" width="344" height="160" rx="6" fill="#ffffff" stroke="#b8c5d2" stroke-width="1"/>
+<text x="492" y="232" fill="#526579" font-size="12" font-weight="600" letter-spacing="1">02  /  IDN WATCH</text>
+<text x="492" y="268" fill="#132b47" font-size="16" font-weight="600">Collect public updates</text>
+<text x="492" y="300" fill="#526579" font-size="16">Read selected official news</text>
+<text x="492" y="324" fill="#526579" font-size="16">about expansions and changes.</text>
+</g>
+<g id="step-3" data-block-id="step-3" data-block-name="Make the change clear">
+<rect x="888" y="200" width="344" height="160" rx="6" fill="#ffffff" stroke="#b8c5d2" stroke-width="1"/>
+<text x="912" y="232" fill="#526579" font-size="12" font-weight="600" letter-spacing="1">03  /  IDN WATCH</text>
+<text x="912" y="268" fill="#132b47" font-size="16" font-weight="600">Make the change clear</text>
+<text x="912" y="300" fill="#526579" font-size="16">Identify the IDN, facility, dates</text>
+<text x="912" y="324" fill="#526579" font-size="16">and reported facts.</text>
+<text x="912" y="348" fill="#526579" font-size="16">Keep the original source.</text>
+</g>
+<g id="step-4" data-block-id="step-4" data-block-name="Check before showing sales">
+<rect x="888" y="432" width="344" height="160" rx="6" fill="#eff6fc" stroke="#0f6cbd" stroke-width="2"/>
+<text x="912" y="464" fill="#526579" font-size="12" font-weight="600" letter-spacing="1">04  /  CONTENT REVIEW</text>
+<text x="912" y="500" fill="#132b47" font-size="16" font-weight="600">Check before showing sales</text>
+<text x="912" y="532" fill="#526579" font-size="16">An editor checks, corrects</text>
+<text x="912" y="556" fill="#526579" font-size="16">and approves each update.</text>
+</g>
+<g id="step-5" data-block-id="step-5" data-block-name="Put useful follow-ups first">
+<rect x="468" y="432" width="344" height="160" rx="6" fill="#ffffff" stroke="#b8c5d2" stroke-width="1"/>
+<text x="492" y="464" fill="#526579" font-size="12" font-weight="600" letter-spacing="1">05  /  IDN WATCH</text>
+<text x="492" y="500" fill="#132b47" font-size="16" font-weight="600">Put useful follow-ups first</text>
+<text x="492" y="532" fill="#526579" font-size="16">Scale and supplier relevance;</text>
+<text x="492" y="556" fill="#526579" font-size="16">next step, recency and evidence.</text>
+</g>
+<g id="step-6" data-block-id="step-6" data-block-name="Use it in your dashboard">
+<rect x="48" y="432" width="344" height="160" rx="6" fill="#0f6cbd" stroke="#0f6cbd" stroke-width="1"/>
+<text x="72" y="464" fill="#ffffff" font-size="12" font-weight="600" letter-spacing="1">06  /  SALES TEAM</text>
+<text x="72" y="500" fill="#ffffff" font-size="16" font-weight="600">Use it in your dashboard</text>
+<text x="72" y="532" fill="#ffffff" font-size="16">See the change and next step.</text>
+<text x="72" y="556" fill="#ffffff" font-size="16">Expand for sources and details.</text>
+</g>
+<line x1="48" y1="628" x2="1232" y2="628" stroke="#b8c5d2" stroke-width="1"/>
+<text x="48" y="660" fill="#132b47" font-size="16" font-weight="600">Every recommendation answers:</text>
+<text x="368" y="660" fill="#526579" font-size="16">What changed?   Why does it matter?   What should I check next?</text>
+<text x="48" y="696" fill="#526579" font-size="12">Sales still qualifies the opportunity. A priority score is not proof of an active buying need.</text>
+</svg></div>
+<p class="presenter-note"><strong>For today's demo:</strong> collection runs on demand from selected public sources. Approved updates enter the sales feed; drafts can be previewed separately. The same ranking criteria apply across IDNs, and expansion charts appear only when supported by the source.</p>
+</main></body></html>

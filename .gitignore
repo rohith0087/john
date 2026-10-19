@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+data/*.db
+data/*.db-*
+server.*.log
+.test-temp/
+data/backups/
+tmp/
+*.log
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+.DS_Store
+Thumbs.db
