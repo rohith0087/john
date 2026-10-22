@@ -13,6 +13,7 @@ from urllib.parse import urljoin, urlparse
 import urllib.request
 
 from intelligence import canonical_url, clean, normalize_article, SYSTEM_HOSTS
+import openai_pipeline
 
 ROOT = Path(__file__).resolve().parent
 CONFIG = ROOT / 'data' / 'collectors.json'
@@ -256,7 +257,9 @@ def start_run(systems, path):
         return cursor.lastrowid, True
 
 
-def run_collection(run_id, systems, path, importer, fetcher=fetch):
+def run_collection(run_id, systems, path, importer, fetcher=fetch, ai_client=None):
+    if ai_client is not None:
+        return run_gpt_collection(run_id, systems, path, importer, fetcher, ai_client)
     totals = {key: 0 for key in ['created','revised','unchanged','excluded','failed','retrieved']}
     try:
         for source in json.loads(CONFIG.read_text(encoding='utf-8')):
@@ -301,6 +304,77 @@ def run_collection(run_id, systems, path, importer, fetcher=fetch):
         db.execute('UPDATE collection_runs SET finished_at=?,status=?,totals=? WHERE id=?', (now(), status, json.dumps(totals), run_id))
 
 
+def run_gpt_collection(run_id, systems, path, importer, fetcher, ai_client):
+    totals = {key: 0 for key in ['created','revised','unchanged','excluded','failed','retrieved',
+                                'searched','gpt_summaries','cached_summaries']}
+    seen = set()
+    try:
+        for system in sorted(set(systems)):
+            source_id = 'gpt-search-' + system
+            errors, successes = [], 0
+            try:
+                search = ai_client.search(system, path)
+                urls = search['urls']
+                totals['searched'] += 1
+                record_item(run_id, source_id, '', 'searched',
+                            f'GPT web search returned {len(urls)} bounded official-source article link(s).', path)
+                for url in urls[:ai_client.config.articles_per_system]:
+                    if (system, url) in seen:
+                        continue
+                    seen.add((system, url))
+                    try:
+                        html = fetcher(allowed_url(url))
+                        article = save_snapshot(parse_article(html, url), html, source_id, 'http', path)
+                        totals['retrieved'] += 1
+                        successes += 1
+                        # A search citation alone is never treated as fetched article text.
+                        if not re.search(r'\b' + ('HCA' if system == 'hca' else system) + r'\b',
+                                         article['title'] + ' ' + article['text'], re.I):
+                            reason = 'The retrieved article does not identify the selected parent IDN.'
+                            item = None
+                        elif article.get('publication_date') and (date.today() - date.fromisoformat(article['publication_date'])).days not in range(ai_client.config.lookback_days + 1):
+                            reason = f'Article publication is outside the current {ai_client.config.lookback_days}-day search window.'
+                            item = None
+                        else:
+                            item, reason = normalize_article(article, system)
+                        with connect(path) as db:
+                            db.execute('UPDATE collected_articles SET relevance=? WHERE url=?',
+                                       ('candidate' if item else reason, article['url']))
+                        if not item:
+                            totals['excluded'] += 1
+                            record_item(run_id, source_id, url, 'excluded', reason, path)
+                            continue
+                        item, cached = ai_client.summarize(article, item, path)
+                        totals['cached_summaries' if cached else 'gpt_summaries'] += 1
+                        item['discovery'] = {'method': 'openai_web_search', 'model': search['model'],
+                                             'response_id': search['response_id']}
+                        counts = importer([item], path, origin='collector')
+                        for key in ['created','revised','unchanged']:
+                            totals[key] += counts[key]
+                        outcome = next((key for key in ['created','revised','unchanged'] if counts[key]), 'unchanged')
+                        signal_id = hashlib.sha256((item['system'] + '|' + item['source_url'].rstrip('/')).encode()).hexdigest()[:24]
+                        record_item(run_id, source_id, url, outcome,
+                                    'Cached GPT summary reused.' if cached else 'GPT summary generated from saved article text; source review required.', path, signal_id)
+                    except Exception as error:
+                        totals['failed'] += 1
+                        errors.append(str(error)[:250])
+                        record_item(run_id, source_id, url, 'failed', str(error), path)
+            except Exception as error:
+                totals['failed'] += 1
+                errors.append(str(error)[:250])
+                record_item(run_id, source_id, '', 'failed', str(error), path)
+            with connect(path) as db:
+                db.execute('INSERT INTO source_health VALUES (?,?,?,?) ON CONFLICT(source_id) DO UPDATE SET last_attempt=excluded.last_attempt,last_success=COALESCE(excluded.last_success,source_health.last_success),last_error=excluded.last_error',
+                           (source_id, now(), now() if successes else None, '; '.join(errors) or None))
+    except Exception as error:
+        totals['failed'] += 1
+        record_item(run_id, 'pipeline', '', 'failed', str(error), path)
+    outcome = 'partial' if totals['failed'] and totals['retrieved'] else 'failed' if totals['failed'] else 'completed'
+    with connect(path) as db:
+        db.execute('UPDATE collection_runs SET finished_at=?,status=?,totals=? WHERE id=?',
+                   (now(), outcome, json.dumps(totals), run_id))
+
+
 def status(path):
     with connect(path) as db:
         row = db.execute('SELECT * FROM collection_runs ORDER BY id DESC LIMIT 1').fetchone()
@@ -311,7 +385,15 @@ def status(path):
         health = {r['source_id']: dict(r) for r in db.execute('SELECT * FROM source_health')}
         article_count = db.execute('SELECT COUNT(*) FROM collected_articles').fetchone()[0]
     sources = [dict(source, **{k:v for k,v in health.get(source['id'], {}).items() if k != 'source_id'}) for source in json.loads(CONFIG.read_text(encoding='utf-8'))]
-    return {'sources': sources, 'last_run': run, 'article_count': article_count}
+    engine = openai_pipeline.public_status()
+    if engine['mode'] == 'gpt':
+        sources = [dict(id='gpt-search-' + system, system=system,
+                        name=openai_pipeline.SYSTEM_NAMES[system] + ' · official-source web search',
+                        index_url='https://' + sorted(hosts)[0],
+                        note=f"Search covers the last {engine['lookback_days']} days on: " + ', '.join(sorted(hosts)) + '. Article text must be fetched before summarizing.',
+                        **{k:v for k,v in health.get('gpt-search-' + system, {}).items() if k != 'source_id'})
+                   for system, hosts in SYSTEM_HOSTS.items()]
+    return {'sources': sources, 'last_run': run, 'article_count': article_count, 'engine': engine}
 
 
 def recover_interrupted(path):

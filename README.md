@@ -1,14 +1,22 @@
 # IDN Watch — account intelligence
 
-A working local prototype for sales teams following selected IDNs in Georgia, the Carolinas, and Florida. It collects a bounded set of public articles, normalizes developments, produces explainable recommendations, and queues facts for editorial review. The compact dashboard shows the top three approved recommendations; account briefs show evidence, follow-up steps, charts, and review history.
+A working local prototype for sales teams following selected IDNs in Georgia, the Carolinas, and Florida. It supports GPT web search and source-backed summaries, alongside the original public-page collection mode. It normalizes developments, produces explainable recommendations, and queues facts for editorial review. The compact dashboard shows the top three approved recommendations; account briefs show evidence, follow-up steps, charts, and review history.
 
 ## Run and try it
 
-Python 3.11+; no pip packages, API key, or subscription required. Windows collection uses PowerShell and the normal Windows certificate trust store.
+Python 3.11+; no pip packages required. GPT search and summaries require an OpenAI API key with API billing and model/tool access. The original rules mode requires no API key. Windows article collection uses PowerShell and the normal Windows certificate trust store.
 
 ```powershell
 python app.py serve
 ```
+
+To enable GPT mode, copy `.env.example` to `.env` if that file does not already exist, then enter your existing key privately after `OPENAI_API_KEY=`. Never paste the key into chat or commit it. `OPENAI_MODEL` defaults to `gpt-5.4-mini`; `IDN_AI_MODE=gpt` enables live search and summaries. Set `IDN_AI_MODE=rules` to use the original collector. Environment variables override `.env.local`, which overrides `.env`. Configuration is read when a refresh/import starts, so adding the key does not require restarting the server.
+
+In GPT mode, **Refresh updates** performs a live OpenAI web search for each selected IDN, limited to its configured source hosts and the last 30 days by default. `IDN_AI_LOOKBACK_DAYS` accepts 7–180 days. Search favors the newest qualifying announcements and receives already-collected URLs to reduce repeat discovery. It accepts tool-returned source/citation URLs, fetches the original articles, and saves source snapshots before requesting summaries. Search snippets alone are not accepted as article evidence. Blocked article pages remain failed requests rather than fabricated summaries.
+
+Each generated summary includes exact source passages, with checks for missing passages and unsupported numeric tokens. The existing normalization rules still determine structured facts, metrics and stages; GPT supplies the prose summary. These checks supplement human review and do not establish semantic accuracy. New or changed records remain pending; approval, source checking, ranking criteria, charts and all seven dashboard widget layouts retain their existing behavior. Errors do not silently fall back to template summaries in GPT mode.
+
+Each refresh uses one search request per selected IDN, with at most two search-tool calls per request and three article candidates per IDN by default. `IDN_AI_ARTICLES_PER_SYSTEM` accepts 1–5. These are workload bounds, not a dollar spending cap. Unchanged article summaries are cached by snapshot, normalized facts, model and prompt version. Local SQLite audit rows retain response references, token usage and discovered source URLs without storing the key. There are no scheduled API calls; ordinary page reloads only read saved results. The collection bar separates added, updated and unchanged record counts. The expanded recommendation list defaults to Latest published, with Highest priority and publication-window filters available. The browser remembers these display preferences. Overview and widget priorities retain the shared scoring method. Publication dates remain separate from collection time. Equivalent encoded source URLs collapse to one feed item while their stored audit records remain available. See [GPT search and summary details](docs/gpt-search-and-summaries.md).
 
 Open http://127.0.0.1:8765. Click **Refresh updates**, inspect **Collection details**, then open **Content review**. Review a draft, correct facts if necessary, and approve it to place that version in the local sales feed. **Preview draft recommendations** lets you inspect pending suggestions separately. Health-system selections are saved in this browser and filter before the top three are chosen.
 
@@ -94,6 +102,6 @@ python -m unittest discover -s tests -q
 node --check web/app.js
 ```
 
-37 tests cover replay, revisions, stale review/edit protection, source failure, publication dates, relevance rules, same-entity capacity bounds, unsupported corrections, imported provenance, leadership classification, financial units, and discovery. Browser checks cover refresh, corrections, approval to feed, manual import, graphs, and bounded scenarios.
+55 tests cover replay, revisions, stale review/edit protection, source failure, publication dates, relevance rules, same-entity capacity bounds, unsupported corrections, imported provenance, leadership classification, financial units, discovery, and simulated GPT search/summary responses. GPT checks cover citation host filtering, required tool execution, evidence passages, unsupported numbers, refusal/incomplete responses, summary caching, preservation of reviewed corrections, private configuration, and source-fetch failure. A live GPT request must be checked separately after a real key is configured. Browser checks cover refresh, corrections, approval to feed, manual import, graphs, and bounded scenarios.
 
 This is a functional Phase 1 prototype, not a finished monitoring service. Broader source coverage, evaluated extraction recall/precision, cross-source event merging, scheduled jobs, production access control, supplier personalization, CRM integration, and client validation remain future work. No forecasting accuracy or sales-lift claim has been established.

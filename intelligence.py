@@ -35,7 +35,12 @@ def canonical_url(value):
     u = urlparse(value)
     if u.scheme != 'https' or not u.hostname or u.username or u.password or u.port not in (None, 443):
         raise ValueError('Use an HTTPS source URL without credentials or a custom port.')
-    return urlunparse(('https', u.hostname.lower(), re.sub('/+', '/', u.path).rstrip('/') or '/', '', '', ''))
+    # Preserve reserved separators, but normalize equivalent slug spellings.
+    def decode_slug(match):
+        char = chr(int(match[0][1:], 16))
+        return char if char.isascii() and (char.isalnum() or char in '-._~$') else match[0].upper()
+    path = re.sub(r'%[0-9a-fA-F]{2}', decode_slug, u.path)
+    return urlunparse(('https', u.hostname.lower(), re.sub('/+', '/', path).rstrip('/') or '/', '', '', ''))
 
 
 def quote(value, limit=320):
@@ -54,7 +59,7 @@ def classify(title, text):
         ('Ownership & partnerships', r'acquisit|acquir|merger|joint venture|partnership|agreement to (?:buy|purchase)'),
         ('Leadership', r'appoint|(?:names?|named) .{0,70}(?:chief|ceo|cfo|president|vice president)|leadership change'),
         ('Financial', r'(?:financial|quarter|annual).{0,20}results|earnings|operating margin|revenue|senior notes|capital spending'),
-        ('Expansion', r'expan(?:sion|d)|new hospital|relocation hospital|patient tower|breaks? ground|groundbreaking|construction|new emergency|first patients.{0,80}(?:hospital|medical center)'),
+        ('Expansion', r'expan(?:sion|d)|new hospital|relocation hospital|patient tower|breaks? ground|groundbreaking|construction|new emergency|first patients.{0,80}(?:hospital|medical center)|(?:opens?|opened|opening).{0,80}(?:building|hospital|medical center|health campus|new locations|clinic|urgent care)|(?:approved to build|will build|to build its first).{0,60}(?:hospital|medical center)'),
     ]
     for category, pattern in checks:
         if re.search(pattern, t):
@@ -82,7 +87,7 @@ def development_stage(title, text):
         return 'completed'
     if re.search(r'breaks? ground|groundbreaking|construction.{0,40}(begins|underway|milestone)|under construction', title, re.I):
         return 'underway'
-    if re.search(r'plan|will |expected|anticipated|proposed|opening to patients', title + ' ' + text[:2000], re.I):
+    if re.search(r'plan|will |expected|anticipated|proposed|opening to patients|approved to build', title + ' ' + text[:2000], re.I):
         return 'planned'
     return 'announced'
 
@@ -132,6 +137,7 @@ def extract_budget(text):
     for sentence in sentences(text):
         match = re.search(r'\$\s*([\d,.]+)\s*(million|billion)\b', sentence, re.I)
         if re.search(r'master facility plan|regional (?:investment|plan)|strategic plan',sentence,re.I): continue
+        if re.search(r'\bsince\b.{0,160}\b(?:invested|investment)\b|\b(?:over|during) the (?:past|last) \w+ years\b',sentence,re.I): continue
         if match and re.search(r'project|expansion|invest|construction|tower|hospital', sentence, re.I):
             return {'amount': float(match.group(1).replace(',', '')) * (1e9 if match.group(2).lower() == 'billion' else 1e6),
                     'currency': 'USD', 'qualifier': 'nearly' if re.search(r'(?:nearly|almost)\s+\$', sentence, re.I) else 'approximately' if re.search(r'(?:approximately|about)\s+\$',sentence,re.I) else 'more_than' if re.search(r'(?:more than|over|upwards of)\s+\$', sentence, re.I) else 'reported',
@@ -182,7 +188,7 @@ def normalize_article(article, system):
     elif category=='Leadership': summary=f'The source reports a leadership appointment involving {entity}. Confirm roles, effective dates, and purchasing responsibility before changing account contacts.'
     else: summary=f'The source reports an ownership or partnership development involving {entity}. Confirm the affected organizations, transaction stage, and contracting implications.'
     return {
-        'schema_version': 2, 'extraction_version': 'rules-2026-10-16.5', 'input_kind': 'collected', 'system': system, 'title': title,
+        'schema_version': 2, 'extraction_version': 'rules-2026-10-21.1', 'input_kind': 'collected', 'system': system, 'title': title,
         'source_date': article.get('publication_date'), 'publication_date': article.get('publication_date'),
         'event_date': None, 'category': category, 'summary': summary, 'implication': '',
         'source_url': canonical_url(article['url']), 'profile': None, 'profile_page': None,

@@ -7,7 +7,7 @@ from datetime import date
 import hashlib
 import json
 from pathlib import Path
-from intelligence import recommend
+from intelligence import recommend, canonical_url
 
 PLAYBOOKS = Path(__file__).resolve().parent / 'data' / 'recommendation_playbooks.json'
 FIELDS = ('system', 'title', 'source_date', 'event_date', 'category', 'summary',
@@ -37,12 +37,29 @@ def fingerprint(record):
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
+def unique_sources(records):
+    """Collapse URL spelling aliases in the feed while retaining every audit record."""
+    groups = {}
+    for record in records:
+        if record.get('schema_version') != 2:
+            groups[('legacy', record['id'])] = [record]
+            continue
+        key = (record['system'], canonical_url(record['source_url']).rstrip('/'))
+        groups.setdefault(key, []).append(record)
+    result = []
+    for key, group in groups.items():
+        canonical_id = hashlib.sha256('|'.join(key).encode()).hexdigest()[:24] if key[0] != 'legacy' else None
+        primary = next((r for r in group if r['id'] == canonical_id), None)
+        result.append(primary or max(group, key=lambda r:(bool(r.get('source_checked')), r.get('recorded_at',''), r.get('version',0))))
+    return result
+
+
 def rank_signals(records, as_of=None, playbooks=None):
     as_of = as_of or date.today()
     if playbooks is None:
         playbooks = json.loads(PLAYBOOKS.read_text(encoding='utf-8'))
     result = []
-    for record in records:
+    for record in unique_sources(records):
         if record['status'] == 'rejected':
             continue
         if record.get('schema_version') == 2:

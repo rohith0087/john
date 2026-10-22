@@ -213,6 +213,9 @@ select { border: 1px solid #d1d1d1; border-radius: 5px; background: var(--surfac
 .empty .button { margin-top: 10px; }
 .loading { padding: 45px; color: var(--muted); text-align: center; font-size: 13px; }
 .toast { background: var(--brand-subtle); color: var(--brand-pressed); border: 1px solid var(--brand-border); border-radius: 5px; padding: 13px 17px; margin-bottom: 20px; font-size: 13px; line-height: 1.7; }
+.recommendation-view-controls { display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-wrap:wrap; }
+.recommendation-view-controls select { min-height:34px; padding:6px 9px; font-size:12px; }
+.publication-date { color:var(--muted); white-space:nowrap; }
 .error-state { padding: 25px; background: var(--danger-bg); border: 1px solid #edc6c8; border-radius: 7px; color: var(--danger); margin-bottom: 25px; }
 .error-state p { font-size: 13px; line-height: 1.7; }
 dialog { color: var(--text); background: var(--surface); border: 1px solid #d1d1d1; box-shadow: 0 20px 80px #12243a30; padding: 0; }

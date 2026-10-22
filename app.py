@@ -10,8 +10,9 @@ import secrets
 import sqlite3
 import threading
 from urllib.parse import urlparse, parse_qs
-from recommendations import rank_signals
+from recommendations import rank_signals, unique_sources
 import collector
+import openai_pipeline
 from intelligence import validate_facts, normalize_article, canonical_url, clean, recommend, SYSTEM_NAMES, SYSTEM_HOSTS, SYSTEM_REGIONS
 
 ROOT = Path(__file__).resolve().parent
@@ -84,7 +85,7 @@ def ingest(items, path=DB, origin='import', expected=None):
         with db:
             db.execute('BEGIN IMMEDIATE')
             for item in items:
-                identity = item['system'] + '|' + item['source_url'].rstrip('/')
+                identity = item['system'] + '|' + (canonical_url(item['source_url']) if item.get('schema_version') == 2 else item['source_url']).rstrip('/')
                 sid = hashlib.sha256(identity.encode()).hexdigest()[:24]
                 payload = json.dumps(item, sort_keys=True, ensure_ascii=False)
                 digest = hashlib.sha256(payload.encode()).hexdigest()
@@ -199,6 +200,7 @@ def edit_record(sid, version, changes, path=DB):
 
 
 def import_article(data, path=DB):
+    ai_client = openai_pipeline.configured_client()
     system = data.get('system')
     if system not in SYSTEMS: raise ValueError('Choose a configured IDN.')
     url = collector.allowed_url(data.get('url', ''))
@@ -213,6 +215,8 @@ def import_article(data, path=DB):
     article = collector.save_snapshot({'url':url,'title':title,'text':text,'publication_date':published}, '', 'manual-' + system, 'manual_import', path)
     item, reason = normalize_article(article, system)
     if not item: raise ValueError('This article did not match a supported development: ' + reason)
+    if ai_client is not None:
+        item, _ = ai_client.summarize(article, item, path)
     counts = ingest([item], path, origin='collector')
     return dict(counts, id=hashlib.sha256((system + '|' + url.rstrip('/')).encode()).hexdigest()[:24])
 
@@ -247,7 +251,7 @@ def serve(port):
                 return self.respond({'signals':current(),'systems':SYSTEMS,'regions':SYSTEM_REGIONS,'review_token':token})
             if route == '/api/recommendations':
                 query = parse_qs(urlparse(self.path).query)
-                rows = [r for r in current() if r.get('schema_version') == 2]
+                rows = unique_sources([r for r in current() if r.get('schema_version') == 2])
                 drafts = sum(r['status']=='pending' for r in rows)
                 if query.get('include_drafts') != ['1']: rows = [r for r in rows if r['status']=='approved']
                 return self.respond(dict(rank_signals(rows), drafts_available=drafts))
@@ -301,9 +305,11 @@ def serve(port):
                 systems = data.get('systems', list(SYSTEMS))
                 if not isinstance(systems,list) or not systems or any(s not in SYSTEMS for s in systems):
                     raise ValueError('Select at least one pilot health system to collect.')
+                ai_client = openai_pipeline.configured_client()
                 run_id, created = collector.start_run(sorted(set(systems)), DB)
                 if created:
-                    threading.Thread(target=collector.run_collection, args=(run_id,systems,DB,ingest), daemon=True).start()
+                    threading.Thread(target=collector.run_collection, args=(run_id,systems,DB,ingest),
+                                     kwargs={'ai_client':ai_client}, daemon=True).start()
                 return self.respond({'run_id':run_id,'started':created},202)
             except RuntimeError as e:
                 self.respond({'error':str(e)},409)
@@ -335,8 +341,9 @@ if __name__ == '__main__':
     elif args.command == 'export':
         print(json.dumps(current(),indent=2))
     elif args.command == 'collect':
+        ai_client = openai_pipeline.configured_client()
         run_id, created = collector.start_run(list(SYSTEMS), DB)
-        if created: collector.run_collection(run_id,list(SYSTEMS),DB,ingest)
+        if created: collector.run_collection(run_id,list(SYSTEMS),DB,ingest,ai_client=ai_client)
         print(json.dumps(collector.status(DB),indent=2))
     else:
         serve(args.port)

@@ -118,6 +118,9 @@ class ExtractionTest(unittest.TestCase):
 
 class LiveStoreTest(unittest.TestCase):
     def setUp(self):
+        ai_patch = patch('app.openai_pipeline.configured_client', return_value=None)
+        ai_patch.start()
+        self.addCleanup(ai_patch.stop)
         self.temp=tempfile.TemporaryDirectory()
         self.path=Path(self.temp.name)/'watch.db'
         self.config=Path(self.temp.name)/'collectors.json'

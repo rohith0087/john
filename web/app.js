@@ -38,7 +38,16 @@ const pageSize = 25;
 const included = r => selected.includes(r.system);
 const activeRecommendations = () => recommendations.filter(r => included(r) && ($('preview-drafts').checked || r.status === 'approved'));
 const selectedRecords = () => records.filter(r => included(r) && r.schema_version === 2);
-function filteredRecommendations() { const query = $('recommendation-search').value.toLowerCase().trim(), category = $('recommendation-category').value; return activeRecommendations().filter(r => (!category || r.category === category) && `${r.headline} ${r.action_title} ${r.title} ${r.rationale} ${systems[r.system]}`.toLowerCase().includes(query)); }
+function filteredRecommendations() {
+  const query = $('recommendation-search').value.toLowerCase().trim(), category = $('recommendation-category').value;
+  const days = Number($('recommendation-window').value), today = Date.parse(scoredOn + 'T00:00:00Z');
+  const rows = activeRecommendations().filter(r => {
+    const published = r.publication_date || r.source_date, age = published ? (today - Date.parse(published + 'T00:00:00Z')) / 86400000 : null;
+    return (!category || r.category === category) && (!days || (age !== null && age >= 0 && age <= days)) && `${r.headline} ${r.action_title} ${r.title} ${r.rationale} ${systems[r.system]}`.toLowerCase().includes(query);
+  });
+  if ($('recommendation-sort').value === 'latest') rows.sort((a,b) => (b.publication_date || b.source_date || '').localeCompare(a.publication_date || a.source_date || '') || b.score - a.score || a.id.localeCompare(b.id));
+  return rows;
+}
 function filteredReviews() { const query = $('review-search').value.toLowerCase().trim(), status = $('review-status').value; return records.filter(r => included(r) && ($('record-type').value === 'all' || r.schema_version === 2) && (!status || r.status === status) && `${r.title} ${r.summary} ${systems[r.system]}`.toLowerCase().includes(query)); }
 function filteredSources() { const query = $('source-search').value.toLowerCase().trim(); return (sourceLinks || []).filter(r => included(r) && `${r.url} ${r.profile} ${systems[r.system]}`.toLowerCase().includes(query)); }
 function notify(text) { clearTimeout(toastTimer); $('message').textContent = text; $('message').hidden = false; toastTimer = setTimeout(() => { $('message').hidden = true; }, 7000); }
@@ -52,6 +61,7 @@ async function load(initial = false) {
     recommendations = ranked.recommendations; method = ranked.method; scoredOn = ranked.scored_on;
     collectionState = collected; briefs.clear();
     if (initial) { try { const saved = JSON.parse(localStorage.getItem(storageKey)); selected = Array.isArray(saved) ? [...new Set(saved.filter(key => Object.hasOwn(systems, key)))] : Object.keys(systems); } catch { selected = Object.keys(systems); } }
+    if (initial) { try { const saved = JSON.parse(localStorage.getItem('idn-watch-recommendation-view')); if (saved && ['latest','priority'].includes(saved.sort)) $('recommendation-sort').value = saved.sort; if (saved && ['0','7','30','90'].includes(saved.window)) $('recommendation-window').value = saved.window; } catch {} }
     $('load-error').hidden = true; $('workspace-content').hidden = false;
     render(); renderMethod(); renderCollection();
     if (collectionState.last_run?.status === 'running' && !collectionPoll) scheduleCollectionPoll();
@@ -94,11 +104,14 @@ function render() {
   }
   renderRecommendations(); renderReviews(); if (typeof renderWidgets === 'function') renderWidgets(); if (view === 'sources' && sourceLinks !== null) renderSources();
 }
-function recommendationRow(r, rank, next) {
-  const row = el('article', 'recommendation-row'), number = el('span', 'rank-number', String(rank).padStart(2, '0')); number.setAttribute('aria-label', 'Priority ' + rank);
+function recommendationRow(r, rank, next, chronological = false) {
+  const row = el('article', 'recommendation-row'), number = el('span', 'rank-number', String(rank).padStart(2, '0')); number.setAttribute('aria-label', (chronological ? 'Publication order ' : 'Priority ') + rank);
+  if (chronological) number.title = 'Position by publication date. Priority points remain unchanged.';
   const content = el('div'), meta = metadata(r);
   meta.append(el('span', 'source-state ' + (r.source_checked ? 'checked' : ''), r.evidence_label));
   if (r.status === 'pending') meta.append(el('span', 'draft-badge', 'Draft'));
+  const published = r.publication_date || r.source_date;
+  meta.append(el('span','publication-date',published ? 'Published ' + formatDate(published) : 'Publication date unavailable'));
   const headline = button(r.headline, 'recommendation-title', () => openDetail(r.id));
   headline.setAttribute('aria-label', 'Account update: ' + r.headline);
   const context = el('dl', 'sales-context');
@@ -108,12 +121,12 @@ function recommendationRow(r, rank, next) {
   const why = button('Why prioritized?', 'why-button', null, 'info'), popover = el('div', 'reason-popover');
   const tooltipId = `why-${view}-${rank}-${r.id}-${rowSequence++}`; popover.id = tooltipId; popover.hidden = true; popover.setAttribute('role', 'tooltip');
   why.setAttribute('aria-describedby', tooltipId); why.setAttribute('aria-expanded', 'false'); why.setAttribute('aria-label', 'Why prioritized: ' + r.headline);
-  popover.append(el('strong', '', `Priority ${rank} · ${r.score}/100`));
+  popover.append(el('strong', '', chronological ? `Priority score ${r.score}/100` : `Priority ${rank} · ${r.score}/100`));
   const leadingFactors = [...r.factors].sort((a, b) => b.points - a.points).slice(0, 2);
   for (const factor of leadingFactors) popover.append(el('p', 'popover-explanation', factor.reason));
   for (const factor of r.factors) { const line = el('div', 'reason-line'); line.append(el('span', '', factor.label), el('b', '', `${factor.points}/${factor.maximum}`)); popover.append(line); }
   const gap = next ? r.score - next.score : null;
-  const comparison = next ? gap ? `${gap} point${gap === 1 ? "" : "s"} above the next item in this view.` : 'Tied on points; the newer source date, then record ID, breaks the tie.' : 'No lower-ranked item in this view.';
+  const comparison = chronological ? 'This list is ordered by publication date. The shared priority score is unchanged.' : next ? gap ? `${gap} point${gap === 1 ? "" : "s"} above the next item in this view.` : 'Tied on points; the newer source date, then record ID, breaks the tie.' : 'No lower-ranked item in this view.';
   popover.append(el('p', 'popover-note', `${comparison} ${r.evidence_label}. Open the account brief for supporting evidence.`));
   let pinned = false, hovered = false, focused = false, suppressed = false, closeTimer;
   const update = () => {
@@ -135,8 +148,9 @@ function recommendationRow(r, rank, next) {
 let rowSequence = 0;
 function renderRecommendations() {
   const rows = filteredRecommendations(); $('recommendation-count').textContent = `${rows.length} recommendation${rows.length === 1 ? '' : 's'} for your selected systems`;
-  $('all-recommendations').replaceChildren(); rows.forEach((r, index) => $('all-recommendations').append(recommendationRow(r, index + 1, rows[index + 1])));
-  if (!rows.length) $('all-recommendations').append(emptyState('No recommendations in this view', selected.length ? 'Try another search or development category, or check editorial review.' : 'Choose a health system to build your list.', !selected.length));
+  const chronological = $('recommendation-sort').value === 'latest';
+  $('all-recommendations').replaceChildren(); rows.forEach((r, index) => $('all-recommendations').append(recommendationRow(r, index + 1, rows[index + 1], chronological)));
+  if (!rows.length) $('all-recommendations').append(emptyState('No recommendations in this view', selected.length ? 'Try a wider publication window or preview pending updates. The last live check is shown above.' : 'Choose a health system to build your list.', !selected.length));
 }
 function reviewButtons(r) {
   const actions = el('div', 'review-actions');
@@ -224,6 +238,7 @@ function renderDetail(id) {
   const heading = el('div', 'drawer-heading'), close = button('', 'icon-button', () => $('detail-dialog').close(), 'close'); close.setAttribute('aria-label', 'Close account brief'); heading.append(el('span', '', 'ACCOUNT BRIEF'), close);
   const body = el('div', 'drawer-body'), title = el('h2', '', rec ? rec.headline : r.title); title.id = 'detail-title'; body.append(metadata(r), title);
   const overview = el('section', 'brief-overview'); overview.append(el('h3', '', 'What changed'), el('p', 'drawer-lead', r.summary));
+  if (r.summary_generation) overview.append(el('p','small-text',r.editor_note ? 'GPT-assisted draft with editorial review. See version history for changes.' : 'GPT summary from saved article text · source review required.'));
   if (rec) overview.append(el('h3', '', 'Why it matters to sales'), el('p', 'drawer-lead', rec.rationale));
   body.append(overview);
   body.append(el('div', 'evidence-callout ' + (r.source_checked ? 'checked-callout' : ''), r.schema_version === 2 ? (r.source_checked ? 'Source checked during local content review. Check for later developments before acting on historical plans.' : 'Article text saved · extracted facts need review. Retrieval alone does not verify every extracted value or the latest project status.') : 'Profile reference only · the original source has not been collected.'));
@@ -245,6 +260,7 @@ function renderDetail(id) {
   const evidence = el('section', 'drawer-section'); evidence.append(el('h3', '', 'Source & verification'), el('blockquote', 'source-quote', r.evidence_text));
   const source = safeLink(r.source_url, 'Open original source', 'source-link'); source.append(icon('link')); evidence.append(source);
   const reference = r.schema_version === 2 ? r.source_id : `${r.profile} · page ${r.profile_page}`;
+  if (r.summary_generation?.claims?.length) { const passages=el('details','visual-evidence');passages.append(el('summary','','Passages used for the generated summary'));r.summary_generation.claims.forEach(claim=>passages.append(el('blockquote','source-quote',claim.evidence)));evidence.append(passages); }
   const grid = el('div', 'detail-grid'); for (const [label, value] of [['Source reference',reference],[r.schema_version === 2 ? 'Article publication date' : 'Profile entry date',formatDate(r.source_date)],['Event date',r.event_date ? formatDate(r.event_date) : 'Not verified'],['Content review',statusLabels[r.status]]]) { const item = el('div','',label); item.append(el('strong','',value)); grid.append(item); } evidence.append(grid);
   if (r.implication) evidence.append(el('h3', '', 'Sales qualification notes'), el('p', '', r.implication)); body.append(evidence);
   if(r.editor_note)evidence.append(el('p','review-note','Review note: '+r.editor_note));
@@ -322,11 +338,12 @@ function renderCollection() {
   $('refresh-button').disabled=running; $('refresh-button').replaceChildren(icon('radar'),document.createTextNode(running?'Refreshing…':'Refresh updates'));
   $('collection-indicator').className='collection-indicator '+(running?'running':run?.status==='partial'||run?.status==='failed'?'partial':'');
   const processed=run?.items?.filter(item=>['created','revised','unchanged','excluded'].includes(item.status)).length||0;
-  $('collection-summary').textContent=running?`Collecting public sources · ${processed} article(s) processed`:run?`Last collection ${new Date(run.finished_at||run.started_at).toLocaleString()} · ${run.status} · ${run.totals.retrieved||0} articles retrieved`:'No collection run yet. Refresh to retrieve public articles.';
+  $('collection-summary').textContent=running?`Checking official sources · ${processed} article(s) processed`:run?`Last checked ${new Date(run.finished_at||run.started_at).toLocaleString()} · ${run.status} · ${run.totals.created||0} added, ${run.totals.revised||0} updated, ${run.totals.unchanged||0} unchanged · ${run.totals.retrieved||0} articles fetched`:'No live check yet. Refresh to search for recent articles.';
   const root=$('collection-content');root.replaceChildren();
+  if(collectionState.engine)root.append(el('p','small-text',collectionState.engine.message));
   root.append(el('p','subtext','Coverage is bounded to these sources. Failed requests remain visible; no articles are removed when a source is unavailable.'));
   for(const source of collectionState.sources){const box=el('section','collector-source');box.append(el('h3','',source.name),safeLink(source.index_url,new URL(source.index_url).hostname,'source-link'),el('p','',source.note));box.append(el('p','small-text',source.last_success?`Last article retrieval: ${new Date(source.last_success).toLocaleString()}`:'No successful article retrieval recorded.'));if(source.last_error)box.append(el('p','source-error',source.last_error));root.append(box);}
-  if(run){root.append(el('h3','',`Latest run · ${run.status}`));const totals=run.totals;root.append(el('p','small-text',`${totals.created||0} new · ${totals.revised||0} revised · ${totals.unchanged||0} unchanged · ${totals.excluded||0} excluded · ${totals.failed||0} failed requests`));const list=el('div','collection-log');for(const item of run.items){const row=el('div','collection-log-row');row.append(el('span','log-status '+item.status,item.status),el('p','',item.message));if(item.url)row.append(safeLink(item.url,new URL(item.url).hostname,'source-link'));list.append(row);}root.append(list);}
+  if(run){root.append(el('h3','',`Latest run · ${run.status}`));const totals=run.totals;root.append(el('p','small-text',`${totals.created||0} new · ${totals.revised||0} revised · ${totals.unchanged||0} unchanged · ${totals.excluded||0} excluded · ${totals.failed||0} failed requests`));if(totals.searched!==undefined)root.append(el('p','small-text',`${totals.searched} IDN web searches · ${totals.gpt_summaries||0} GPT summaries generated · ${totals.cached_summaries||0} cached summaries reused`));const list=el('div','collection-log');for(const item of run.items){const row=el('div','collection-log-row');row.append(el('span','log-status '+item.status,item.status),el('p','',item.message));if(item.url)row.append(safeLink(item.url,new URL(item.url).hostname,'source-link'));list.append(row);}root.append(list);}
 }
 function scheduleCollectionPoll(){if(collectionPoll)return;collectionPoll=setTimeout(async()=>{collectionPoll=null;try{collectionState=await request('/api/collection');renderCollection();if(collectionState.last_run?.status==='running')scheduleCollectionPoll();else{await load();notify('Collection finished. Review the candidate updates and source results.');}}catch(error){notify('Could not check collection progress: '+error.message);}},1500);}
 async function refreshCollection(){if(!selected.length)return notify('Choose at least one health system to collect.');$('refresh-button').disabled=true;try{await request('/api/collect',{method:'POST',headers:{'Content-Type':'application/json','X-Review-Token':token},body:JSON.stringify({systems:selected})});collectionState=await request('/api/collection');renderCollection();scheduleCollectionPoll();}catch(error){$('refresh-button').disabled=false;notify(error.message);}}
@@ -368,6 +385,9 @@ $('review-search').addEventListener('input', renderReviews); $('review-status').
 $('record-type').addEventListener('change',renderReviews);
 $('preview-drafts').addEventListener('change',render);
 $('refresh-button').addEventListener('click',refreshCollection);
+function saveRecommendationView() { try { localStorage.setItem('idn-watch-recommendation-view',JSON.stringify({sort:$('recommendation-sort').value,window:$('recommendation-window').value})); } catch {} renderRecommendations(); }
+$('recommendation-sort').addEventListener('change',saveRecommendationView);
+$('recommendation-window').addEventListener('change',saveRecommendationView);
 $('collection-details').addEventListener('click',()=>{renderCollection();$('collection-dialog').showModal();});
 $('import-button').addEventListener('click',openImport);
 $('collection-import').addEventListener('click',()=>{$('collection-dialog').close();openImport();});
